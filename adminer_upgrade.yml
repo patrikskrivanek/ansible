@@ -1,0 +1,43 @@
+---
+- hosts: "{{ target }}"
+  user: root
+  sudo: yes
+
+  vars:
+      adminer_dir: "/var/www/adminer"
+      download_url: "https://www.adminer.org/latest.php"
+
+  tasks:
+    - name: Installation
+      file:
+        path: "{{ adminer_dir }}"
+        state: directory
+        owner: www-data
+        group: admin
+        mode: 0570
+
+    - name: Download latest Adminer version
+      get_url:
+        url: "{{ download_url }}"
+        dest: "{{ adminer_dir }}/latest.php"
+        mode: 0664
+        force: yes
+        validate_certs: no
+
+    - name: Create symlink
+      file:
+        src: "{{ adminer_dir }}/latest.php"
+        dest: "{{ adminer_dir }}/index.php"
+        mode: 0570
+        owner: www-data
+        group: admin
+        state: link
+
+    - name: Check if apache2 is installed
+      stat:
+        path: /etc/apache2/envvars
+      register: apache2_exists
+
+    - name: Reload Apache
+      service: name=apache2 state=reloaded
+      when: apache2_exists.stat.exists != False
